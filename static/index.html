@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VR姿态驾驶游戏</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 游戏容器 -->
+        <div id="game-container"></div>
+
+        <!-- 摄像头预览 -->
+        <div id="camera-preview">
+            <canvas id="skeleton-canvas"></canvas>
+            <video id="camera-video" autoplay playsinline muted></video>
+        </div>
+
+        <!-- HUD 显示 -->
+        <div id="hud">
+            <div class="hud-item">
+                <span class="label">速度</span>
+                <span id="speed-display" class="value">0 km/h</span>
+            </div>
+            <div class="hud-item">
+                <span class="label">分数</span>
+                <span id="score-display" class="value">0</span>
+            </div>
+            <div class="hud-item">
+                <span class="label">转向</span>
+                <span id="steering-display" class="value">0%</span>
+            </div>
+            <div class="hud-item">
+                <span class="label">状态</span>
+                <span id="status-display" class="value">等待开始</span>
+            </div>
+        </div>
+
+        <!-- 方向盘指示器 -->
+        <div id="steering-indicator">
+            <div class="steering-wheel">
+                <div class="steering-arrow"></div>
+            </div>
+        </div>
+
+        <!-- 油门指示器 -->
+        <div id="throttle-indicator">
+            <div class="throttle-bar">
+                <div class="throttle-fill"></div>
+            </div>
+            <span>油门</span>
+        </div>
+
+        <!-- 姿态数据显示 -->
+        <div id="pose-data">
+            <div class="pose-item">
+                <span class="pose-label">身体倾斜</span>
+                <span id="lean-angle" class="pose-value">0°</span>
+            </div>
+            <div class="pose-item">
+                <span class="pose-label">左手臂</span>
+                <span id="arm-angle-left" class="pose-value">0°</span>
+            </div>
+            <div class="pose-item">
+                <span class="pose-label">右手臂</span>
+                <span id="arm-angle-right" class="pose-value">0°</span>
+            </div>
+            <div class="pose-item">
+                <span class="pose-label">检测状态</span>
+                <span id="detection-status" class="pose-value status-off">未检测</span>
+            </div>
+        </div>
+
+        <!-- 控制面板 -->
+        <div id="control-panel">
+            <div class="connection-status">
+                <span id="connection-indicator" class="indicator off"></span>
+                <span id="connection-text">未连接</span>
+            </div>
+
+            <button id="btn-connect" class="btn btn-primary">连接服务器</button>
+            <button id="btn-start-camera" class="btn btn-secondary" disabled>启动摄像头</button>
+            <button id="btn-calibrate" class="btn btn-warning" disabled>校准姿态</button>
+            <button id="btn-start-game" class="btn btn-success" disabled>开始游戏</button>
+        </div>
+
+        <!-- 游戏结束/暂停覆盖层 -->
+        <div id="game-overlay">
+            <div class="overlay-content">
+                <h2 id="overlay-message">游戏结束</h2>
+                <p id="final-score">最终得分: 0</p>
+                <button id="btn-restart" class="btn btn-success">重新开始</button>
+            </div>
+        </div>
+
+        <!-- 说明面板 -->
+        <div id="instructions">
+            <h3>操作说明</h3>
+            <ul>
+                <li><strong>身体左倾</strong> - 向左转向</li>
+                <li><strong>身体右倾</strong> - 向右转向</li>
+                <li><strong>双手抬起</strong> - 加速</li>
+                <li><strong>身体前倾</strong> - 刹车</li>
+                <li><strong>双手平举</strong> - 减速</li>
+            </ul>
+            <p class="tip">提示：请先校准姿态，站在摄像头前保持直立姿势后点击"校准姿态"</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="/static/js/game.js"></script>
+    <script src="/static/js/pose_connector.js"></script>
+    <script src="/static/js/pose_interpreter.js"></script>
+    <script>
+        // 全局变量
+        let poseConnector = null;
+        let poseInterpreter = null;
+
+        // DOM 元素
+        const elements = {
+            gameContainer: document.getElementById('game-container'),
+            skeletonCanvas: document.getElementById('skeleton-canvas'),
+            cameraVideo: document.getElementById('camera-video'),
+            speedDisplay: document.getElementById('speed-display'),
+            scoreDisplay: document.getElementById('score-display'),
+            steeringDisplay: document.getElementById('steering-display'),
+            statusDisplay: document.getElementById('status-display'),
+            steeringIndicator: document.querySelector('.steering-arrow'),
+            throttleIndicator: document.querySelector('.throttle-fill'),
+            leanAngle: document.getElementById('lean-angle'),
+            armAngleLeft: document.getElementById('arm-angle-left'),
+            armAngleRight: document.getElementById('arm-angle-right'),
+            detectionStatus: document.getElementById('detection-status'),
+            connectionIndicator: document.getElementById('connection-indicator'),
+            connectionText: document.getElementById('connection-text'),
+            btnConnect: document.getElementById('btn-connect'),
+            btnStartCamera: document.getElementById('btn-start-camera'),
+            btnCalibrate: document.getElementById('btn-calibrate'),
+            btnStartGame: document.getElementById('btn-start-game'),
+            btnRestart: document.getElementById('btn-restart'),
+            gameOverlay: document.getElementById('game-overlay'),
+            instructions: document.getElementById('instructions')
+        };
+
+        // 初始化
+        async function init() {
+            // 初始化姿态解释器
+            poseInterpreter = new PoseInterpreter();
+            poseInterpreter.initDisplayElements({
+                leanAngle: elements.leanAngle,
+                armAngleLeft: elements.armAngleLeft,
+                armAngleRight: elements.armAngleRight,
+                detectionStatus: elements.detectionStatus,
+                steeringIndicator: elements.steeringIndicator,
+                throttleIndicator: elements.throttleIndicator
+            });
+
+            // 初始化游戏
+            Game.init();
+
+            // 设置摄像头预览大小
+            elements.skeletonCanvas.width = 320;
+            elements.skeletonCanvas.height = 240;
+
+            // 绑定按钮事件
+            bindEvents();
+
+            // 隐藏覆盖层
+            elements.gameOverlay.style.display = 'none';
+        }
+
+        // 绑定事件
+        function bindEvents() {
+            elements.btnConnect.addEventListener('click', connectToServer);
+            elements.btnStartCamera.addEventListener('click', startCamera);
+            elements.btnCalibrate.addEventListener('click', calibratePose);
+            elements.btnStartGame.addEventListener('click', startGame);
+            elements.btnRestart.addEventListener('click', restartGame);
+        }
+
+        // 连接服务器
+        async function connectToServer() {
+            const wsUrl = `ws://${window.location.hostname}:8000/ws/pose`;
+
+            poseConnector = new PoseConnector();
+
+            poseConnector.onPoseData = (data) => {
+                // 处理姿态数据
+                poseInterpreter.handlePoseData(data);
+
+                // 应用到游戏
+                Game.applyControls(data);
+            };
+
+            poseConnector.onStatusChange = (status) => {
+                updateConnectionUI(status);
+
+                if (status === 'connected') {
+                    elements.btnStartCamera.disabled = false;
+                }
+            };
+
+            poseConnector.onError = (error) => {
+                console.error('Connection error:', error);
+                alert('连接失败，请确保服务器已启动');
+            };
+
+            poseConnector.connect(wsUrl);
+            elements.btnConnect.disabled = true;
+            elements.btnConnect.textContent = '连接中...';
+        }
+
+        // 启动摄像头
+        async function startCamera() {
+            if (!poseConnector) {
+                alert('请先连接服务器');
+                return;
+            }
+
+            const success = await poseConnector.initCamera();
+
+            if (success) {
+                elements.cameraVideo.srcObject = poseConnector.camera;
+                elements.cameraVideo.style.display = 'block';
+
+                // 开始发送视频帧
+                poseConnector.startSendingFrames();
+
+                elements.btnStartCamera.disabled = true;
+                elements.btnStartCamera.textContent = '摄像头已启动';
+                elements.btnCalibrate.disabled = false;
+            }
+        }
+
+        // 校准姿态
+        function calibratePose() {
+            if (!poseConnector || !poseInterpreter) {
+                alert('请先连接服务器并启动摄像头');
+                return;
+            }
+
+            // 校准前端
+            const calibrationData = poseInterpreter.calibrate();
+
+            if (calibrationData) {
+                // 发送校准请求到服务器
+                poseConnector.sendCalibration(calibrationData);
+
+                elements.btnCalibrate.disabled = true;
+                elements.btnCalibrate.textContent = '已校准';
+                elements.btnStartGame.disabled = false;
+
+                // 显示提示
+                elements.statusDisplay.textContent = '校准完成';
+            } else {
+                alert('请确保身体在摄像头范围内');
+            }
+        }
+
+        // 开始游戏
+        function startGame() {
+            Game.start();
+            elements.statusDisplay.textContent = '行驶中';
+            elements.instructions.style.display = 'none';
+        }
+
+        // 重新开始
+        function restartGame() {
+            Game.reset();
+            Game.start();
+            elements.statusDisplay.textContent = '行驶中';
+        }
+
+        // 更新连接UI
+        function updateConnectionUI(status) {
+            const indicator = elements.connectionIndicator;
+            const text = elements.connectionText;
+
+            indicator.className = 'indicator';
+
+            switch (status) {
+                case 'connecting':
+                    indicator.classList.add('connecting');
+                    text.textContent = '连接中...';
+                    break;
+                case 'connected':
+                    indicator.classList.add('on');
+                    text.textContent = '已连接';
+                    elements.btnConnect.textContent = '已连接';
+                    break;
+                case 'disconnected':
+                    indicator.classList.add('off');
+                    text.textContent = '断开连接';
+                    elements.btnConnect.disabled = false;
+                    elements.btnConnect.textContent = '重新连接';
+                    break;
+                case 'error':
+                    indicator.classList.add('error');
+                    text.textContent = '连接错误';
+                    elements.btnConnect.disabled = false;
+                    elements.btnConnect.textContent = '重试';
+                    break;
+                case 'camera_ready':
+                    elements.statusDisplay.textContent = '摄像头就绪';
+                    break;
+                case 'calibrated':
+                    elements.statusDisplay.textContent = '校准完成';
+                    break;
+            }
+        }
+
+        // 页面加载完成后初始化
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

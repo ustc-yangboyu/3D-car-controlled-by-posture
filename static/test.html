@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+</head>
+<body>
+    <h1>WebSocket Connection Test</h1>
+    <button id="testBtn">Test Connection</button>
+    <pre id="output"></pre>
+    <script>
+        document.getElementById('testBtn').addEventListener('click', function() {
+            document.getElementById('output').textContent = 'Connecting to ws://127.0.0.1:8000/ws/pose...';
+            var ws = new WebSocket('ws://127.0.0.1:8000/ws/pose');
+            ws.onopen = function() {
+                document.getElementById('output').textContent = 'Connected!';
+                ws.send('{"type":"ping"}');
+            };
+            ws.onmessage = function(event) {
+                document.getElementById('output').textContent += '\nReceived: ' + event.data;
+            };
+            ws.onerror = function(error) {
+                document.getElementById('output').textContent += '\nError: ' + JSON.stringify(error);
+            };
+            ws.onclose = function() {
+                document.getElementById('output').textContent += '\nClosed';
+            };
+        });
+    </script>
+</body>
+</html>

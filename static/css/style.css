@@ -1,0 +1,406 @@
+/* VR姿态驾驶游戏 - 样式表 */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
+    background: #1a1a2e;
+    color: #ffffff;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+}
+
+#app {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+/* 游戏容器 */
+#game-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+#game-container canvas {
+    display: block;
+}
+
+/* 摄像头预览 */
+#camera-preview {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 200px;
+    height: 150px;
+    border: 3px solid #00ff00;
+    border-radius: 10px;
+    overflow: hidden;
+    z-index: 100;
+    background: #000;
+}
+
+#camera-preview video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+}
+
+#skeleton-canvas {
+    width: 100%;
+    height: 100%;
+}
+
+/* HUD 显示 */
+#hud {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 100;
+}
+
+.hud-item {
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-align: center;
+    min-width: 120px;
+}
+
+.hud-item .label {
+    display: block;
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 5px;
+}
+
+.hud-item .value {
+    display: block;
+    font-size: 24px;
+    font-weight: bold;
+    color: #00ff00;
+}
+
+/* 方向盘指示器 */
+#steering-indicator {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+}
+
+.steering-wheel {
+    width: 100px;
+    height: 100px;
+    border: 8px solid #333;
+    border-radius: 50%;
+    position: relative;
+    background: radial-gradient(circle, #444 0%, #222 100%);
+}
+
+.steering-arrow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 4px;
+    height: 40px;
+    background: linear-gradient(to top, #ff6600, #ffff00);
+    transform-origin: center bottom;
+    transform: translateX(-50%) rotate(0deg);
+    border-radius: 2px;
+    transition: transform 0.1s ease-out;
+}
+
+.steering-arrow::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 12px solid #ffff00;
+}
+
+/* 油门指示器 */
+#throttle-indicator {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    z-index: 100;
+}
+
+.throttle-bar {
+    width: 30px;
+    height: 100px;
+    background: #333;
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+}
+
+.throttle-fill {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 0%;
+    background: linear-gradient(to top, #00ff00, #ffff00, #ff0000);
+    transition: height 0.1s ease-out;
+}
+
+#throttle-indicator span {
+    font-size: 12px;
+    color: #888;
+}
+
+/* 姿态数据显示 */
+#pose-data {
+    position: absolute;
+    top: 180px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 15px;
+    border-radius: 10px;
+    z-index: 100;
+    min-width: 150px;
+}
+
+.pose-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.pose-item:last-child {
+    margin-bottom: 0;
+}
+
+.pose-label {
+    color: #888;
+}
+
+.pose-value {
+    font-weight: bold;
+}
+
+.status-on {
+    color: #00ff00;
+}
+
+.status-off {
+    color: #ff4444;
+}
+
+/* 控制面板 */
+#control-panel {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 15px;
+    border-radius: 10px;
+}
+
+.connection-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+.indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #666;
+}
+
+.indicator.on {
+    background: #00ff00;
+    box-shadow: 0 0 10px #00ff00;
+}
+
+.indicator.off {
+    background: #ff4444;
+}
+
+.indicator.connecting {
+    background: #ffff00;
+    animation: blink 0.5s infinite;
+}
+
+.indicator.error {
+    background: #ff0000;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* 按钮样式 */
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.2s;
+    min-width: 140px;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: #0056b3;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: #545b62;
+}
+
+.btn-warning {
+    background: #ffc107;
+    color: #000;
+}
+
+.btn-warning:hover:not(:disabled) {
+    background: #e0a800;
+}
+
+.btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+    background: #1e7e34;
+}
+
+/* 游戏覆盖层 */
+#game-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+}
+
+.overlay-content {
+    text-align: center;
+    background: rgba(30, 30, 50, 0.95);
+    padding: 40px 60px;
+    border-radius: 20px;
+    border: 2px solid #00ff00;
+}
+
+.overlay-content h2 {
+    font-size: 36px;
+    margin-bottom: 20px;
+    color: #ff6600;
+}
+
+.overlay-content p {
+    font-size: 24px;
+    margin-bottom: 30px;
+    color: #00ff00;
+}
+
+/* 说明面板 */
+#instructions {
+    position: absolute;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    padding: 20px;
+    border-radius: 10px;
+    z-index: 100;
+    max-width: 250px;
+}
+
+#instructions h3 {
+    color: #00ff00;
+    margin-bottom: 15px;
+    font-size: 18px;
+}
+
+#instructions ul {
+    list-style: none;
+    margin-bottom: 15px;
+}
+
+#instructions li {
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #ccc;
+}
+
+#instructions .tip {
+    font-size: 12px;
+    color: #888;
+    border-top: 1px solid #444;
+    padding-top: 10px;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    #camera-preview {
+        width: 150px;
+        height: 112px;
+    }
+
+    #instructions {
+        display: none;
+    }
+
+    #pose-data {
+        display: none;
+    }
+
+    .hud-item .value {
+        font-size: 18px;
+    }
+}
